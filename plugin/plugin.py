@@ -78,11 +78,11 @@ class DownloadListScreen(Screen):
 
     def __init__(self, session):
         Screen.__init__(self, session)
-        self["status"] = Label("Wtyczka gotowa. Wybierz wersjê listy.")
+        self["status"] = Label("Wtyczka gotowa. Wybierz wersjÄ™ listy.")
         self["info"] = Label("Ostatnia aktualizacja: " + str(get_local_version()))
         self["autostart_status"] = Label("")
         
-        self["key_red"] = Label("Wyjœcie")
+        self["key_red"] = Label("WyjÅ›cie")
         self["key_green"] = Label("Hotbird 13E")
         self["key_yellow"] = Label("Dual 13E+19E")
         self["key_blue"] = Label("Autostart")
@@ -110,9 +110,9 @@ class DownloadListScreen(Screen):
 
     def update_autostart_label(self):
         if is_autostart_enabled():
-            self["autostart_status"].setText("Auto-aktualizacja przy starcie: W£¥CZONA")
+            self["autostart_status"].setText("Auto-aktualizacja przy starcie: WÅÄ„CZONA")
         else:
-            self["autostart_status"].setText("Auto-aktualizacja przy starcie: WY£¥CZONA")
+            self["autostart_status"].setText("Auto-aktualizacja przy starcie: WYÅÄ„CZONA")
 
     def toggle_autostart(self):
         current_state = is_autostart_enabled()
@@ -155,7 +155,7 @@ class DownloadListScreen(Screen):
             local_version = get_local_version()
             
             if remote_version != "Nieznana" and local_version == remote_version:
-                self.trigger_gui_update("Masz ju¿ najnowsz¹ wersjê listy!", "Wersja na dekoderze: " + local_version)
+                self.trigger_gui_update("Masz juÅ¼ najnowszÅ¼ wersjÄ™ listy!", "Wersja na dekoderze: " + local_version)
                 # Dajemy 3 sekundy na przeczytanie komunikatu zanim pozwolimy pobraæ ponownie na si³ê
                 import time
                 time.sleep(3)
@@ -176,7 +176,7 @@ class DownloadListScreen(Screen):
                     out_file.write(response.read())
             
             if os.path.exists(PATH_ZIP) and os.path.getsize(PATH_ZIP) > 1024:
-                self.trigger_gui_update("Instalowanie nowej listy kana³ów...")
+                self.trigger_gui_update("Instalowanie nowej listy kanaÅ‚Ã³w...")
                 delete_old_bouquets()
                 
                 with zipfile.ZipFile(PATH_ZIP, 'r') as zip_ref:
@@ -193,11 +193,11 @@ class DownloadListScreen(Screen):
                     f.write(version_to_save)
                     
                 os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=4")
-                self.trigger_gui_update("Sukces! Lista zosta³a zaktualizowana.", "Ostatnia aktualizacja: " + version_to_save)
+                self.trigger_gui_update("Sukces! Lista zostaÅ‚a zaktualizowana.", "Ostatnia aktualizacja: " + version_to_save)
             else:
-                self.trigger_gui_update("B³¹d: Plik ZIP z GitHub jest uszkodzony lub pusty.")
+                self.trigger_gui_update("BÅ‚Ä…d: Plik ZIP z GitHub jest uszkodzony lub pusty.")
         except Exception as e:
-            self.trigger_gui_update("B³¹d sieci: " + str(e)[:45])
+            self.trigger_gui_update("BÅ‚Ä…d sieci: " + str(e)[:45])
 
 def main(session, **kwargs):
     session.open(DownloadListScreen)
@@ -264,7 +264,7 @@ def Plugins(**kwargs):
     return [
         PluginDescriptor(
             name="Bzyk83 GitHub Downloader",
-            description="Pobiera listy kana³ów z automatycznym sprawdzaniem wersji i czyszczeniem",
+            description="Pobiera listy kanaÅ‚Ã³w z automatycznym sprawdzaniem wersji i czyszczeniem",
             where=PluginDescriptor.WHERE_PLUGINMENU,
             icon="plugin.png",
             fnc=main
@@ -273,3 +273,4 @@ def Plugins(**kwargs):
             where=PluginDescriptor.WHERE_AUTOSTART,
             fnc=autostart
         )
+    ]
