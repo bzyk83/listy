@@ -22,9 +22,12 @@ EXTRACT_PATH = "/etc/enigma2/"
 LAST_UPDATE_FILE = "/etc/enigma2/.bzyk83_last_update"
 AUTOSTART_CONFIG_FILE = "/etc/enigma2/.bzyk83_autostart"
 
-# TUTAJ BYÅ BÅÄ„D (zmieniono hp.zip na hb.zip)
+# Bezpoœrednie linki do plików zip oraz plików wersji .version
 URL_HB = "https://raw.githubusercontent.com/bzyk83/listy/main/hb.zip"
 URL_DUAL = "https://raw.githubusercontent.com/bzyk83/listy/main/dual.zip"
+
+URL_HB_VER = "https://raw.githubusercontent.com/bzyk83/listy/main/hb.version"
+URL_DUAL_VER = "https://raw.githubusercontent.com/bzyk83/listy/main/dual.version"
 
 def is_autostart_enabled():
     if os.path.exists(AUTOSTART_CONFIG_FILE):
@@ -75,11 +78,11 @@ class DownloadListScreen(Screen):
 
     def __init__(self, session):
         Screen.__init__(self, session)
-        self["status"] = Label("Wtyczka gotowa. Wybierz wersjÄ™ listy.")
+        self["status"] = Label("Wtyczka gotowa. Wybierz wersjê listy.")
         self["info"] = Label("Ostatnia aktualizacja: " + str(get_local_version()))
         self["autostart_status"] = Label("")
         
-        self["key_red"] = Label("WyjÅ›cie")
+        self["key_red"] = Label("Wyjœcie")
         self["key_green"] = Label("Hotbird 13E")
         self["key_yellow"] = Label("Dual 13E+19E")
         self["key_blue"] = Label("Autostart")
@@ -107,9 +110,9 @@ class DownloadListScreen(Screen):
 
     def update_autostart_label(self):
         if is_autostart_enabled():
-            self["autostart_status"].setText("Auto-aktualizacja przy starcie: WÅÄ„CZONA")
+            self["autostart_status"].setText("Auto-aktualizacja przy starcie: W£¥CZONA")
         else:
-            self["autostart_status"].setText("Auto-aktualizacja przy starcie: WYÅÄ„CZONA")
+            self["autostart_status"].setText("Auto-aktualizacja przy starcie: WY£¥CZONA")
 
     def toggle_autostart(self):
         current_state = is_autostart_enabled()
@@ -128,12 +131,36 @@ class DownloadListScreen(Screen):
             self["info"].setText(self.info_message)
 
     def start_download_process(self, list_type):
-        self["status"].setText("Pobieranie listy... ProszÄ™ czekaÄ‡.")
+        self["status"].setText("Sprawdzanie wersji na serwerze...")
         threading.Thread(target=self.worker, args=(list_type,)).start()
 
     def worker(self, list_type):
         try:
-            url = URL_HB if list_type == "hb" else URL_DUAL
+            url_zip = URL_HB if list_type == "hb" else URL_DUAL
+            url_ver = URL_HB_VER if list_type == "hb" else URL_DUAL_VER
+            
+            context = ssl._create_unverified_context()
+            
+            # 1. Pobranie wersji z GitHuba
+            remote_version = "Nieznana"
+            try:
+                req_ver = urllib.request.Request(url_ver)
+                req_ver.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+                with urllib.request.urlopen(req_ver, context=context, timeout=8) as response:
+                    remote_version = response.read().decode('utf-8').strip()
+            except Exception as e:
+                # Jeœli plik wersji nie istnieje, kontynuujemy bez sprawdzania
+                pass
+
+            local_version = get_local_version()
+            
+            if remote_version != "Nieznana" and local_version == remote_version:
+                self.trigger_gui_update("Masz ju¿ najnowsz¹ wersjê listy!", "Wersja na dekoderze: " + local_version)
+                # Dajemy 3 sekundy na przeczytanie komunikatu zanim pozwolimy pobraæ ponownie na si³ê
+                import time
+                time.sleep(3)
+                
+            self.trigger_gui_update("Pobieranie paczki z GitHub...")
             
             if os.path.exists(PATH_ZIP):
                 try:
@@ -141,16 +168,15 @@ class DownloadListScreen(Screen):
                 except:
                     pass
                 
-            req = urllib.request.Request(url)
+            req = urllib.request.Request(url_zip)
             req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
             
-            context = ssl._create_unverified_context()
             with urllib.request.urlopen(req, context=context, timeout=15) as response:
                 with open(PATH_ZIP, "wb") as out_file:
                     out_file.write(response.read())
             
             if os.path.exists(PATH_ZIP) and os.path.getsize(PATH_ZIP) > 1024:
-                self.trigger_gui_update("Instalowanie nowej listy kanaÅ‚Ã³w...")
+                self.trigger_gui_update("Instalowanie nowej listy kana³ów...")
                 delete_old_bouquets()
                 
                 with zipfile.ZipFile(PATH_ZIP, 'r') as zip_ref:
@@ -161,16 +187,17 @@ class DownloadListScreen(Screen):
                 except:
                     pass
                 
-                today_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                # Zapisujemy now¹ wersjê pobran¹ z pliku .version (lub bie¿¹cy czas, jeœli plik by³ pusty)
+                version_to_save = remote_version if remote_version != "Nieznana" else datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                 with open(LAST_UPDATE_FILE, "w") as f:
-                    f.write(today_str)
+                    f.write(version_to_save)
                     
                 os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=4")
-                self.trigger_gui_update("Sukces! Lista zostaÅ‚a zaktualizowana.", "Ostatnia aktualizacja: " + today_str)
+                self.trigger_gui_update("Sukces! Lista zosta³a zaktualizowana.", "Ostatnia aktualizacja: " + version_to_save)
             else:
-                self.trigger_gui_update("BÅ‚Ä…d: Plik ZIP z GitHub jest uszkodzony lub pusty.")
+                self.trigger_gui_update("B³¹d: Plik ZIP z GitHub jest uszkodzony lub pusty.")
         except Exception as e:
-            self.trigger_gui_update("BÅ‚Ä…d sieci: " + str(e)[:45])
+            self.trigger_gui_update("B³¹d sieci: " + str(e)[:45])
 
 def main(session, **kwargs):
     session.open(DownloadListScreen)
@@ -179,9 +206,26 @@ def silent_autostart_update():
     if not is_autostart_enabled():
         return
     try:
+        context = ssl._create_unverified_context()
+        
+        # 1. SprawdŸ wersjê przed cichym pobraniem
+        remote_version = "Nieznana"
+        try:
+            req_ver = urllib.request.Request(URL_DUAL_VER)
+            req_ver.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+            with urllib.request.urlopen(req_ver, context=context, timeout=8) as response:
+                remote_version = response.read().decode('utf-8').strip()
+        except:
+            pass
+            
+        local_version = get_local_version()
+        
+        # Jeœli wersje s¹ identyczne, nie obci¹¿amy niepotrzebnie tunera
+        if remote_version != "Nieznana" and local_version == remote_version:
+            return
+            
         req = urllib.request.Request(URL_DUAL)
         req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
-        context = ssl._create_unverified_context()
         with urllib.request.urlopen(req, context=context, timeout=15) as response:
             with open(PATH_ZIP, "wb") as out_file:
                 out_file.write(response.read())
@@ -193,9 +237,10 @@ def silent_autostart_update():
                 os.remove(PATH_ZIP)
             except:
                 pass
-            today_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            
+            version_to_save = remote_version if remote_version != "Nieznana" else datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             with open(LAST_UPDATE_FILE, "w") as f:
-                f.write(today_str)
+                f.write(version_to_save)
             os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=4")
     except:
         pass
@@ -219,7 +264,7 @@ def Plugins(**kwargs):
     return [
         PluginDescriptor(
             name="Bzyk83 GitHub Downloader",
-            description="Pobiera listy kanaÅ‚Ã³w z automatycznym sprawdzaniem wersji i czyszczeniem",
+            description="Pobiera listy kana³ów z automatycznym sprawdzaniem wersji i czyszczeniem",
             where=PluginDescriptor.WHERE_PLUGINMENU,
             icon="plugin.png",
             fnc=main
@@ -228,4 +273,3 @@ def Plugins(**kwargs):
             where=PluginDescriptor.WHERE_AUTOSTART,
             fnc=autostart
         )
-    ]
